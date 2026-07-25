@@ -1,4 +1,5 @@
 import re
+from pathlib import Path
 
 import pandas as pd
 
@@ -53,3 +54,15 @@ def clean_features(df: pd.DataFrame) -> pd.DataFrame:
         result = result.drop(columns=list(leakage_present))
 
     return result
+
+
+if __name__ == "__main__":
+    data_dir = Path(__file__).resolve().parent.parent.parent / "data" / "final"
+    input_path = data_dir / "final_data.csv"
+    output_path = data_dir / "cleaned_data.csv"
+
+    df = pd.read_csv(input_path)
+    cleaned = clean_features(df)
+    cleaned.to_csv(output_path, index=False)
+    print(f"Cleaned {len(df.columns)} -> {len(cleaned.columns)} columns")
+    print(f"Saved to {output_path}")
