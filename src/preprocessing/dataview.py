@@ -12,7 +12,8 @@ Per AGENTS.md:
 - Preserve clinical covariates: lymph_node_status, ER_Status (categorical, NOT median-split)
 - Preserve gene expression probes (~22,215) for feature selection + discretization
 """
-
+from pathlib import Path
+import pandas as pd
 # ============================================================
 # Configuration
 # ============================================================

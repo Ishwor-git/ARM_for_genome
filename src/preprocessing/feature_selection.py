@@ -8,7 +8,7 @@ from clean_features import CLINICAL_COLS, TARGET_COL
 
 SEED = 42
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "final"
-OUTPUT_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "final"
+OUTPUT_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "final" / "feature_selection"
 
 
 def load_clean_data() -> pd.DataFrame:
