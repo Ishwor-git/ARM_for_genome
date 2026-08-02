@@ -7,6 +7,30 @@ import pandas as pd
 from mlxtend.frequent_patterns import apriori, association_rules
 
 
+# The discretized input files carry the target as a single bare 0/1 column
+# (`relapse`). mlxtend's apriori turns that into one item `relapse`, which
+# only ever represents relapse = yes and leaves no item for relapse = no.
+# Before mining we re-encode it into two mutually exclusive one-hot items
+# (`relapse_yes` / `relapse_no`) so both classes are mineable as consequents.
+TARGET_COL = "relapse"
+
+
+def one_hot_encode_target(df: pd.DataFrame) -> pd.DataFrame:
+    """Replace the bare binary target column with two one-hot columns.
+
+    Gene features are left untouched (already one-hot discretized); only the
+    target is re-encoded so each class becomes its own item.
+    """
+    if TARGET_COL not in df.columns:
+        return df
+
+    encoded = df.copy()
+    target = encoded.pop(TARGET_COL).astype(int)
+    encoded[f"{TARGET_COL}_yes"] = (target == 1).astype(bool)
+    encoded[f"{TARGET_COL}_no"] = (target == 0).astype(bool)
+    return encoded
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Run Apriori association rule mining."
@@ -71,6 +95,22 @@ def main():
     df = pd.read_csv(input_path)
 
     print(f"Data shape: {df.shape}")
+    print()
+
+    # ---------------------------------------------------------
+    # Re-encode target into one-hot relapse_yes / relapse_no items
+    # ---------------------------------------------------------
+
+    if TARGET_COL in df.columns:
+        n_target_yes = int((df[TARGET_COL] == 1).sum())
+        n_target_no = int((df[TARGET_COL] == 0).sum())
+        df = one_hot_encode_target(df)
+        print(f"One-hot encoded target: {TARGET_COL}_yes ({n_target_yes}), "
+              f"{TARGET_COL}_no ({n_target_no})")
+        print(f"Transaction data shape after encoding: {df.shape}")
+    else:
+        print(f"Note: no '{TARGET_COL}' column found; no target re-encoding applied.")
+
     print()
 
     # ---------------------------------------------------------
@@ -140,6 +180,12 @@ def main():
     metadata = {
         "input_file": str(input_path),
         "input_shape": list(df.shape),
+        "target_encoding": {
+            "applied": TARGET_COL in df.columns,
+            "items": [f"{TARGET_COL}_yes", f"{TARGET_COL}_no"]
+            if TARGET_COL in df.columns
+            else None,
+        },
         "min_support": args.min_support,
         "max_len": args.max_len,
         "min_confidence": args.min_confidence,

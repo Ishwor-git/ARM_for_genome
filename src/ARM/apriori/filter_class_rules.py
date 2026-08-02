@@ -159,6 +159,13 @@ def main():
         default=METHODS,
         help="Feature selection methods to process (default: all).",
     )
+    parser.add_argument(
+        "--base-dir",
+        type=str,
+        default="data/final/ARM/apriori",
+        help="Root dir containing {method}/top100 subdirs (default: "
+        "data/final/ARM/apriori).",
+    )
     args = parser.parse_args()
 
     project_root = Path(__file__).resolve().parents[3]
@@ -169,15 +176,7 @@ def main():
 
     summaries = {}
     for method in args.method:
-        base = (
-            project_root
-            / "data"
-            / "final"
-            / "ARM"
-            / "apriori"
-            / method
-            / TOP_DIR
-        )
+        base = project_root / args.base_dir / method / TOP_DIR
         summary = process_method(method, base / RULES_NAME, base)
         summaries[method] = summary["class_rules"]["relapse_yes"][
             "count_lift_gt_1.2"
