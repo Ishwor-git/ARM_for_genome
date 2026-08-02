@@ -90,14 +90,14 @@ across ~22,215 features means checking ~247M pairs before pruning). The pipeline
 must go in this order:
 
 1. **Clean columns**: split into the three groups in Section 2's table; drop
-   `AFFX-*` controls; separate outcome columns from predictor columns.
+   `AFFX-*` controls; separate outcome columns from predictor columns. (completed)
 2. **Feature selection** (do this BEFORE re-running ARM at scale): reduce from
    ~22,215 genes down to a manageable count (start around 100–500) using a
    class-aware filter — mutual information with `relapse`, chi-square, or
    t-test/fold-change ranking. Do not use unsupervised variance filtering alone;
-   given `relapse` is available, use it.
+   given `relapse` is available, use it. (mutual_informstioin : completed)
 3. **Discretize** the selected genes (median split as baseline; note the
-   limitation from Section 4).
+   limitation from Section 4). 
 4. **Run ARM** (Apriori/FP-Growth via `mlxtend` or similar — do not hand-roll
    these algorithms) on the discretized, filtered set. Prefer class association
    rule mining (rules with `relapse` as consequent) over generic ARM.
