@@ -1,0 +1,157 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage[numbers]{natbib}
+\usepackage{caption}
+\usepackage{titling}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    urlcolor=blue
+}
+
+\title{Association Rule Mining for Breast Cancer Relapse Prediction \\
+\large Progress Report}
+\author{}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This report documents the progress made on a one-month data mining project applying Association Rule Mining (ARM) to high-dimensional gene expression data for breast cancer relapse prediction. The dataset used is an Affymetrix HG-U133A microarray comprising 286 samples and approximately 22{,}289 raw features, presenting an extreme feature-to-sample ratio ($p/n \approx 78{:}1$). We describe the data cleaning and feature selection pipeline built so far, the discretization and Class Association Rule Mining (CARM) experiments conducted, the limitations encountered, and the results obtained to date. This is a progress report rather than a final report; several planned extensions remain to be executed.
+\end{abstract}
+
+\tableofcontents
+
+\section{Introduction}
+
+Microarray gene expression datasets are characterized by very high dimensionality relative to the number of samples, which poses significant challenges for standard data mining techniques. Association Rule Mining (ARM), traditionally developed for large transactional datasets with relatively low dimensionality (e.g.\ market basket analysis) \citep{agrawal1993mining}, is not naturally suited to the ``wide'' data regime typical of genomics, where the number of features $p$ vastly exceeds the number of samples $n$.
+
+This project investigates the application of classical ARM, and specifically Class Association Rule Mining (CARM) \citep{liu1998integrating}, to a breast cancer gene expression dataset with the goal of predicting patient relapse. The project has four broad objectives:
+
+\begin{enumerate}
+    \item Analyze how classical ARM performs on high-dimensional, high $p/n$ gene expression data.
+    \item Identify approaches to achieve acceptable rule quality and coverage under these conditions.
+    \item Explore ways to scale ARM to incorporate a larger number of features.
+    \item Benchmark ARM-derived predictive performance against a standard machine learning (ML) baseline.
+\end{enumerate}
+
+Given the one-month timeframe, the original four-objective scope was restructured into a phased two-to-four-week pipeline, prioritizing a working end-to-end system over exhaustive coverage of every objective.
+
+\section{Dataset}
+
+The dataset is derived from an Affymetrix HG-U133A microarray platform and consists of 286 breast cancer patient samples with approximately 22{,}289 raw probe-level columns. This gives a feature-to-sample ratio of roughly 78:1, which is substantially more extreme than the ratios typically assumed in classical ARM literature and even in most sparse statistical learning settings \citep{guyon2003introduction}.
+
+Several column categories required special handling prior to analysis:
+
+\begin{itemize}
+    \item \textbf{AFFX control probes}: Affymetrix spike-in quality-control probes that are not biological genes and must be excluded from any biological analysis.
+    \item \textbf{Leakage columns}: \texttt{GEO\_accession\_number}, \texttt{time\_to\_relapse}, and \texttt{Brain\_relapses} were identified as columns that would leak information about the target and were removed.
+    \item \textbf{Target label}: \texttt{relapse}, a binary label, was retained as the prediction target.
+    \item \textbf{Clinical covariates}: \texttt{lymph\_node\_status} and \texttt{ER\_Status} were preserved in the cleaned dataset but excluded from the discretization and feature-selection steps applied to expression probes.
+\end{itemize}
+
+A known parsing artifact, the \texttt{!series\_matrix\_table\_end} marker line present in GEO series matrix files, was identified and handled during cleaning.
+
+\section{Methodology and Pipeline}
+
+The pipeline was implemented as two clean, non-overlapping stages, following a design principle that downstream scripts should not duplicate logic already handled upstream.
+
+\subsection{Stage 1: Data Cleaning (\texttt{clean\_features.py})}
+
+This stage reads the raw microarray data and produces \texttt{cleaned\_data.csv}, containing 286 samples and 22{,}215 expression probes after removing AFFX control probes and the identified leakage columns. This script also defines shared constants (\texttt{CLINICAL\_COLS}, \texttt{TARGET\_COL}) that are imported, rather than redefined, by later stages.
+
+\subsection{Stage 2: Feature Selection (\texttt{feature\_selection.py})}
+
+This stage reads the already-cleaned data (it does not re-run any cleaning logic) and performs the following:
+
+\begin{enumerate}
+    \item \textbf{Discretization}: Each expression probe is discretized via a per-feature median split, producing a binary high/low indicator for each gene.
+    \item \textbf{Mutual information scoring}: Mutual information (MI) between each discretized feature and the binary \texttt{relapse} label is computed using \texttt{sklearn.feature\_selection.mutual\_info\_classif} \citep{pedregosa2011scikit}.
+    \item \textbf{Ranking and subset export}: Features are ranked by MI score, written to \texttt{gene\_mi\_rankings.csv}, and the top-100, top-500, and top-1000 gene subsets are exported to \texttt{data/final/} for downstream ARM experiments.
+\end{enumerate}
+
+Median-split discretization was adopted as a simple, interpretable first approach. However, it is a known and documented limitation: by construction it forces exactly 50\% support for every discretized feature, which destroys differential expression signal and can inflate spurious associations. This is treated as a deliberate, acknowledged constraint of the current phase rather than a defect to be corrected mid-project.
+
+\subsection{Class Association Rule Mining}
+
+Class Association Rule Mining (CARM) was performed on the top-100 gene subset using the FP-Growth algorithm as implemented in \texttt{mlxtend} \citep{raschka2018mlxtend}, which is a more efficient alternative to the original Apriori algorithm \citep{agrawal1994fast} for frequent itemset mining.
+
+\section{Results}
+
+\subsection{Mutual Information Scores}
+
+MI scores for the ranked genes fell in the range of approximately 0.0 to 0.119. These values are low in absolute terms but are consistent with expectations given the coarseness of median-split discretization combined with a relatively small sample size ($n = 286$) for a high-dimensional feature space.
+
+\subsection{CARM on the Top-100 Gene Subset}
+
+Applying FP-Growth-based CARM to the top-100 MI-ranked genes, using a global minimum support threshold of 0.25, yielded the following results:
+
+\begin{itemize}
+    \item Only 8 rules were found with lift greater than 1.2.
+    \item All 8 rules predicted the \texttt{relapse\_no} class.
+    \item Average bootstrap stability across these rules was approximately 46\%.
+    \item Zero rules predicting \texttt{relapse\_yes} (the minority class) were discovered.
+\end{itemize}
+
+\begin{table}[h]
+\centering
+\caption{Summary of initial CARM results on the top-100 gene subset.}
+\label{tab:carm-results}
+\begin{tabular}{@{}ll@{}}
+\toprule
+Metric & Value \\
+\midrule
+Rules with lift $> 1.2$ & 8 \\
+Rules predicting \texttt{relapse\_no} & 8 \\
+Rules predicting \texttt{relapse\_yes} & 0 \\
+Average bootstrap stability & $\sim$46\% \\
+Global minimum support threshold & 0.25 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Diagnosis: The Zero-Minority-Rule Problem}
+
+The complete absence of \texttt{relapse\_yes} rules was investigated and attributed to a threshold artifact rather than a genuine absence of signal. A single global minimum support threshold of 0.25, applied uniformly across the dataset, structurally disadvantages the minority class: if the minority class constitutes a smaller fraction of the 286 samples, itemsets confined to that class are much less likely to clear a support bar defined relative to the full dataset. This is a known issue in ARM applied to imbalanced data \citep{liu1999mining} and is treated as the key finding motivating the next phase of work, rather than a project-ending negative result.
+
+\section{Discussion and Limitations}
+
+Two limitations have been identified and explicitly documented rather than silently worked around:
+
+\begin{enumerate}
+    \item \textbf{Median-split discretization} inflates spurious associations and discards magnitude-of-expression information, since every feature is forced to a fixed 50\% support split regardless of its actual distribution.
+    \item \textbf{Global support thresholding} under class imbalance systematically suppresses rules for the minority class, as demonstrated directly by the zero \texttt{relapse\_yes} rules obtained in the current experiment.
+\end{enumerate}
+
+Both limitations are consistent with, and helpful for demonstrating, the project's first stated objective: characterizing how classical ARM performs on this class of data.
+
+\section{Planned Next Steps}
+
+The following steps are prepared but not yet executed:
+
+\begin{enumerate}
+    \item \textbf{Class-relative support thresholding}: Recompute support as a fraction of each class's size independently, rather than as a fraction of the whole dataset, to allow \texttt{relapse\_yes} rules to be discovered on equal footing with \texttt{relapse\_no} rules.
+    \item \textbf{Scaling to larger feature subsets}: Repeat the CARM experiments on the top-500 and top-1000 MI-ranked gene subsets to assess how rule quantity, quality, and stability change with dimensionality.
+    \item \textbf{ML baseline benchmarking}: Train and evaluate a standard supervised classifier (e.g.\ logistic regression or random forest) on the same feature subsets to provide a predictive-performance baseline against which the ARM-based approach can be compared, directly addressing the project's fourth objective.
+\end{enumerate}
+
+\section{Conclusion}
+
+To date, a working two-stage pipeline (cleaning, then feature selection) has been implemented and validated, producing a clean dataset of 286 samples and 22{,}215 expression probes, MI-based gene rankings, and top-$k$ gene subsets. An initial CARM experiment on the top-100 genes surfaced a small number of low-stability rules, all confined to the majority class, and this outcome was traced to a specific, well-understood cause: global support thresholding under class imbalance. This diagnosis directly motivates the next planned step, class-relative support thresholding, and keeps the project on track toward its remaining objectives of scaling and ML benchmarking.
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}
