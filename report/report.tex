@@ -1,4 +1,4 @@
-\documentclass[11pt]{article}
+\documentclass[twocolumn]{article}
 
 \usepackage[margin=1in]{geometry}
 \usepackage{amsmath}
@@ -19,8 +19,7 @@
     urlcolor=blue
 }
 
-\title{Association Rule Mining for Breast Cancer Relapse Prediction \\
-\large Progress Report}
+\title{Applying Classical Association Rule Mining to High-Dimensional Microarray Data: Challenges and Solutions}
 \author{}
 \date{\today}
 
@@ -29,40 +28,80 @@
 \maketitle
 
 \begin{abstract}
-This report documents the progress made on a one-month data mining project applying Association Rule Mining (ARM) to high-dimensional gene expression data for breast cancer relapse prediction. The dataset used is an Affymetrix HG-U133A microarray comprising 286 samples and approximately 22{,}289 raw features, presenting an extreme feature-to-sample ratio ($p/n \approx 78{:}1$). We describe the data cleaning and feature selection pipeline built so far, the discretization and Class Association Rule Mining (CARM) experiments conducted, the limitations encountered, and the results obtained to date. This is a progress report rather than a final report; several planned extensions remain to be executed.
 \end{abstract}
 
-\tableofcontents
-
 \section{Introduction}
+Association Rule Mining (ARM) is a fundamental technique in Knowledge Discovery in Databases (KDD) for identifying relationships and co-occurrence patterns among variables in large datasets. Originally developed for transactional analysis, ARM has become an important pattern-discovery approach because it can identify combinations of features that occur together without requiring a predefined parametric model. Algorithms such as Apriori and FP-Growth made it possible to systematically search large combinatorial spaces for frequent itemsets and derive association rules from them. Although traditionally associated with applications such as market-basket analysis, the ability of ARM to discover multi-feature relationships has motivated its application to more complex domains, including biomedical research and genomics. In these domains, associations among multiple genes, molecular markers, or phenotypic characteristics may provide useful insights that are difficult to capture using analyses focused on individual variables.
 
-Microarray gene expression datasets are characterized by very high dimensionality relative to the number of samples, which poses significant challenges for standard data mining techniques. Association Rule Mining (ARM), traditionally developed for large transactional datasets with relatively low dimensionality (e.g.\ market basket analysis) \citep{agrawal1993mining}, is not naturally suited to the ``wide'' data regime typical of genomics, where the number of features $p$ vastly exceeds the number of samples $n$.
+Genomic and transcriptomic datasets, however, differ substantially from the transactional datasets for which classical ARM was originally developed. High-throughput technologies such as microarrays can measure the expression levels of thousands of genes across a relatively small number of biological samples, resulting in a high-dimensional setting in which the number of features (p) can greatly exceed the number of observations (n) $((p \gg n))$. Microarray measurements are also continuous and therefore generally require preprocessing or discretization before conventional association-rule algorithms can be applied. Despite these challenges, the structure of such data makes association mining potentially attractive. Biological phenomena may depend on combinations of genes rather than isolated features, and interactions among multiple genes may contain information that is not apparent from univariate analysis. Consequently, ARM provides a natural framework for investigating recurring combinations of gene-expression states and their associations with biological or clinical characteristics.
 
-This project investigates the application of classical ARM, and specifically Class Association Rule Mining (CARM) \citep{liu1998integrating}, to a breast cancer gene expression dataset with the goal of predicting patient relapse. The project has four broad objectives:
+The same characteristics that make high-dimensional genomic data attractive for pattern mining also create substantial computational and analytical challenges. Classical ARM algorithms operate over a combinatorial search space whose size can increase rapidly with the number of available items. In a microarray dataset containing thousands of genes, even a relatively small fraction of genes can produce an enormous number of possible itemsets. The resulting search can lead to excessive execution time and memory consumption, while stringent minimum-support thresholds may eliminate potentially interesting patterns. Conversely, relaxing the support threshold can cause a rapid increase in the number of frequent itemsets and association rules, producing a large volume of redundant, weak, or difficult-to-interpret patterns. Thus, the central challenge is not simply whether an ARM algorithm can generate rules from genomic data, but whether it can do so within practical computational limits while producing patterns that remain analytically useful.
 
-\begin{enumerate}
-    \item Analyze how classical ARM performs on high-dimensional, high $p/n$ gene expression data.
-    \item Identify approaches to achieve acceptable rule quality and coverage under these conditions.
-    \item Explore ways to scale ARM to incorporate a larger number of features.
-    \item Benchmark ARM-derived predictive performance against a standard machine learning (ML) baseline.
-\end{enumerate}
+\section{Dataset and Experimental Setup}
 
-Given the one-month timeframe, the original four-objective scope was restructured into a phased two-to-four-week pipeline, prioritizing a working end-to-end system over exhaustive coverage of every objective.
+\subsection{Dataset}
 
-\section{Dataset}
+The dataset used in this study is a publicly available Affymetrix HG-U133A microarray
+gene expression dataset for breast cancer, comprising raw probe-level intensity values
+alongside clinical annotations for each patient sample.
 
-The dataset is derived from an Affymetrix HG-U133A microarray platform and consists of 286 breast cancer patient samples with approximately 22{,}289 raw probe-level columns. This gives a feature-to-sample ratio of roughly 78:1, which is substantially more extreme than the ratios typically assumed in classical ARM literature and even in most sparse statistical learning settings \citep{guyon2003introduction}.
+\subsubsection{Biological context}
+Each sample corresponds to a primary breast tumor profiled at diagnosis, with the
+clinical outcome of interest being disease relapse. Gene expression from microarray
+probes serves as a proxy for the transcriptional state of the tumor, under the
+hypothesis that differential expression of specific genes is associated with relapse
+risk. This is a well-studied outcome-prediction problem in the breast cancer genomics
+literature, motivating the use of expression-derived rules as an interpretable
+complement to black-box classifiers.
 
-Several column categories required special handling prior to analysis:
+\subsubsection{Data Statistics}
+Table~\ref{tab:data-stats} summarizes the key characteristics of the dataset.
 
-\begin{itemize}
-    \item \textbf{AFFX control probes}: Affymetrix spike-in quality-control probes that are not biological genes and must be excluded from any biological analysis.
-    \item \textbf{Leakage columns}: \texttt{GEO\_accession\_number}, \texttt{time\_to\_relapse}, and \texttt{Brain\_relapses} were identified as columns that would leak information about the target and were removed.
-    \item \textbf{Target label}: \texttt{relapse}, a binary label, was retained as the prediction target.
-    \item \textbf{Clinical covariates}: \texttt{lymph\_node\_status} and \texttt{ER\_Status} were preserved in the cleaned dataset but excluded from the discretization and feature-selection steps applied to expression probes.
-\end{itemize}
+\begin{table}[h]
+\centering
+\small
+\caption{Summary statistics of the breast cancer microarray dataset.}
+\label{tab:data-stats}
+\begin{tabular}{p{3.2cm}p{4.3cm}}
+\toprule
+\textbf{Property} & \textbf{Value} \\
+\midrule
+Platform & Affymetrix HG-U133A \\
+Total samples ($n$) & 286 \\
+Raw probes & $\sim$22{,}289 \\
+Probes after cleaning & 22{,}215 \\
+Clinical covariates & lymph node status, ER status \\
+$p{:}n$ ratio & $\sim$78:1 \\
+Target variable & \texttt{relapse} (binary) \\
+Class distribution & 179 no-relapse / 107 relapse \\
+Class ratio & $\sim$1.67:1 \\
+Data format & Continuous log-intensity matrix \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-A known parsing artifact, the \texttt{!series\_matrix\_table\_end} marker line present in GEO series matrix files, was identified and handled during cleaning.
+The dataset's defining statistical challenge is the extreme feature-to-sample ratio
+($p \approx 22{,}215$, $n = 286$), roughly $78{:}1$, combined with moderate class
+imbalance ($\sim$1.67:1). Both properties directly motivate the preprocessing and
+class-relative mining decisions described in Sections~\ref{sec:preprocessing}
+and~\ref{sec:arm-results}.
+
+\subsection{Data Preprocessing}
+\label{sec:preprocessing}
+
+Raw microarray intensity data is continuous, high-dimensional, and heavily
+platform-annotated — none of which is directly compatible with classical
+transaction-based Association Rule Mining. Converting this data into a valid ARM
+input required several deliberate preprocessing decisions, described below.
+
+\subsubsection{Filtering and leakage removal}
+AFFX control probes (spike-in controls used for platform quality assessment rather
+than biological signal) were removed, as were columns that would leak the outcome
+directly: \texttt{GEO\_accession\_number}, \texttt{time\_to\_relapse}, and
+\texttt{Brain\_relapses}. Clinical covariates with plausible prognostic value
+(\texttt{lymph\_node\_status}, \texttt{ER\_Status}) were retained alongside the
+\texttt{relapse} target. This yielded a cleaned matrix of $286 \times 22{,}215$
+expression features plus covariates and target.
 
 \section{Methodology and Pipeline}
 
