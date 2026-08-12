@@ -20,7 +20,11 @@
 }
 
 \title{Applying Classical Association Rule Mining to High-Dimensional Microarray Data: Challenges and Solutions}
-\author{}
+\author{
+    Ishwor Raj Pokharel\thanks{Email: ishwor.079bei013@tcioe.edu.np} 
+    \and 
+    Suprim Koirala\thanks{Email: coauthor.email@example.com}
+}
 \date{\today}
 
 \begin{document}
@@ -176,11 +180,35 @@ median $\approx 0.019$), chi-square ($\chi^2$ up to $12.55$, computed on the
 same discretized features as MI), and a two-sample $t$-test on the
 \emph{continuous} intensities ($|t|$ up to $4.89$), which avoids the
 information loss of discretization at the cost of comparing means only.
-[NEED YOUR CONFIRMATION: which top-$k$ subset sizes and which ranking
-method(s) does the Results section actually report on — top-100/500/1000
-by MI only, or the fuller $k \in \{100,150,\ldots,400\}$ sweep across all
-three methods? The two drafts disagree and this subsection needs to match
-Results exactly.]
+Following ranking, top-$k$ gene subsets are exported for
+$k \in \{100, 150, 200, 250, 300, 350, 400\}$ (the exported sizes are set by
+a single constant in the selection script). All ARM results reported in
+Section~\ref{sec:arm-results} use the top-100 subset of the primary MI
+ranking; scaling to larger $k$ and to the alternative rankings is deferred to
+the planned next steps.
+
+\paragraph{Cross-method agreement.} Because the three rankings are computed
+on the same discretized matrix, their agreement is directly measurable.
+Figure~\ref{fig:feature-overlap} partitions each top-$k$ subset into the
+seven disjoint Venn regions for $k = 100$ and $k = 150$. At $k = 100$ only 2
+of the 100 genes are selected by all three methods, and the three rankings
+together nominate 264 distinct genes. The primary MI ranker shares just 7
+genes with the other two methods combined, whereas the chi-square and
+$t$-test rankings agree on 29 genes; at $k = 150$ the picture is essentially
+unchanged (3 common genes, union 396). The choice of ranker therefore
+materially changes the feature set handed to the miner.
+
+\begin{figure*}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/feature_overlap_venn.pdf}
+\caption{Agreement between the three class-aware feature-selection methods.
+Each panel is a three-set Venn diagram partitioning a top-$k$ subset into the
+seven disjoint regions: genes selected by exactly one method, by exactly one
+pairwise combination, or by all three. Region labels give gene counts. Only a
+handful of genes survive all three rankings at either $k$, and the union of
+distinct genes far exceeds any single list.}
+\label{fig:feature-overlap}
+\end{figure*}
 
 \subsubsection{Discretization of continuous expression values}
 Each of the 22{,}215 expression probes was converted independently into a
@@ -281,6 +309,7 @@ Global minimum support threshold & 0.25 \\
 The complete absence of \texttt{relapse\_yes} rules was investigated and attributed to a threshold artifact rather than a genuine absence of signal. A single global minimum support threshold of 0.25, applied uniformly across the dataset, structurally disadvantages the minority class: if the minority class constitutes a smaller fraction of the 286 samples, itemsets confined to that class are much less likely to clear a support bar defined relative to the full dataset. This is a known issue in ARM applied to imbalanced data \citep{liu1999mining} and is treated as the key finding motivating the next phase of work, rather than a project-ending negative result.
 
 \section{Discussion and Limitations}
+\label{sec:limitations}
 
 Two limitations have been identified and explicitly documented rather than silently worked around:
 
