@@ -9,6 +9,7 @@ from mlxtend.frequent_patterns import apriori
 
 METHODS = ["chi_square", "mutual_information", "t_test"]
 TOP_DIR = "top100"
+TOP_KIDS = ["top100", "top150"]
 
 # Absolute sample-count floor below which an itemset is treated as not
 # frequent. Both class subsets are mined with this same absolute threshold,
@@ -114,9 +115,9 @@ def find_exclusive(needle, haystack_counts):
     return exclusive
 
 
-def run_method(method, fs_dir, out_base, min_abs, max_len):
+def run_method(method, fs_dir, out_base, min_abs, max_len, top_dir):
     fs_dir = Path(fs_dir)
-    input_path = fs_dir / method / f"{TOP_DIR}_genes_discretized.csv"
+    input_path = fs_dir / method / f"{top_dir}_genes_discretized.csv"
 
     print("\n" + "=" * 60)
     print(f"METHOD: {method}")
@@ -131,7 +132,7 @@ def run_method(method, fs_dir, out_base, min_abs, max_len):
     print(f"  {CLASS_YES}: {n_class[CLASS_YES]} samples")
     print(f"  {CLASS_NO}: {n_class[CLASS_NO]} samples")
 
-    out_root = out_base / method / TOP_DIR / RELATIVE_DIR_NAME
+    out_root = out_base / method / top_dir / RELATIVE_DIR_NAME
     out_root.mkdir(parents=True, exist_ok=True)
 
     # --- mine each class subset independently -----------------------------
@@ -274,6 +275,13 @@ def main():
         help="Feature selection methods to process (default: all).",
     )
     parser.add_argument(
+        "--top-k",
+        type=str,
+        choices=TOP_KIDS,
+        default=TOP_DIR,
+        help="Which discretized gene subset to mine (top100/top150).",
+    )
+    parser.add_argument(
         "--fs-dir",
         type=str,
         default="data/final/feature_selection",
@@ -312,6 +320,7 @@ def main():
             base_dir,
             args.min_absolute_support,
             args.max_len,
+            args.top_k,
         )
 
     print("\n" + "=" * 60)

@@ -7,7 +7,9 @@ import pandas as pd
 from run_class_relative_apriori import (
     CLASS_YES,
     CLASS_NO,
+    METHODS,
     MIN_ABS_SUPPORT,
+    TOP_KIDS,
     absolute_count,
     find_exclusive,
     parse_itemset,
@@ -17,8 +19,6 @@ from run_class_relative_apriori import (
 METHOD = "mutual_information"
 TOP_DIR = "top100"
 RELATIVE_DIR_NAME = "class_relative"
-
-EXPECTED_SIZE2_EXCLUSIVE = 745
 
 OUTPUT_CSV = "relapse_no_exclusive_2itemsets.csv"
 OUTPUT_SUMMARY = "relapse_no_2itemset_summary.json"
@@ -44,8 +44,16 @@ def main():
         "Apriori output, reusing the identical exclusivity logic."
     )
     parser.add_argument(
+        "--method", type=str, choices=METHODS, default=METHOD,
+        help="Feature selection method (default: mutual_information).",
+    )
+    parser.add_argument(
+        "--top-k", type=str, choices=TOP_KIDS, default=TOP_DIR,
+        help="Which discretized gene subset (top100/top150).",
+    )
+    parser.add_argument(
         "--fs-dir", type=str, default="data/final/feature_selection",
-        help="Dir containing mutual_information/top100_genes_discretized.csv.",
+        help="Dir containing {method}/{top-k}_genes_discretized.csv.",
     )
     parser.add_argument(
         "--base-dir", type=str, default="data/final/ARM/apriori_v2",
@@ -54,10 +62,12 @@ def main():
     args = parser.parse_args()
 
     project_root = Path(__file__).resolve().parents[3]
+    method = args.method
+    top_k = args.top_k
     input_path = (
-        project_root / args.fs_dir / METHOD / f"{TOP_DIR}_genes_discretized.csv"
+        project_root / args.fs_dir / method / f"{top_k}_genes_discretized.csv"
     )
-    rel_root = project_root / args.base_dir / METHOD / TOP_DIR / RELATIVE_DIR_NAME
+    rel_root = project_root / args.base_dir / method / top_k / RELATIVE_DIR_NAME
 
     no_fi_path = rel_root / CLASS_NO / "frequent_itemsets.csv"
     yes_fi_path = rel_root / CLASS_YES / "frequent_itemsets.csv"
@@ -75,11 +85,9 @@ def main():
     exclusive = find_exclusive(no_counts, yes_counts)
     size2 = [(fs, here, other) for fs, here, other in exclusive if len(fs) == 2]
 
-    if len(size2) != EXPECTED_SIZE2_EXCLUSIVE:
-        raise RuntimeError(
-            f"Expected {EXPECTED_SIZE2_EXCLUSIVE} relapse_no-exclusive 2-item "
-            f"itemsets, got {len(size2)}. Do not proceed with mismatched count."
-        )
+    print(f"  relapse_no-exclusive itemsets:        {len(exclusive)}")
+    print(f"  relapse_no-exclusive 2-itemsets:      {len(size2)}")
+    print("  (no hardcoded count check -- value derived from this run)")
 
     records = []
     for fs, count_no, count_other in size2:
@@ -129,8 +137,8 @@ def main():
 
     n_pairs = len(out_df)
     summary = {
-        "method": METHOD,
-        "top_dir": TOP_DIR,
+        "method": method,
+        "top_dir": top_k,
         "min_absolute_support": MIN_ABS_SUPPORT,
         "class_sizes": {CLASS_YES: n_yes, CLASS_NO: n_no},
         "input": {
@@ -139,8 +147,6 @@ def main():
             "relapse_yes_frequent_itemsets": str(yes_fi_path),
         },
         "n_exclusive_2itemsets": n_pairs,
-        "expected_2itemset_count": EXPECTED_SIZE2_EXCLUSIVE,
-        "count_matches_permutation": n_pairs == EXPECTED_SIZE2_EXCLUSIVE,
         "unique_genes_across_pairs": len(gene_counts),
         "genes": {gene: count for gene, count in top_genes},
         "top_genes": [

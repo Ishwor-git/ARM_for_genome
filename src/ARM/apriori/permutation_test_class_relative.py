@@ -10,14 +10,17 @@ from run_class_relative_apriori import (
     CLASS_NO,
     CLASS_YES,
     MAX_LEN,
+    METHODS,
     MIN_ABS_SUPPORT,
+    TOP_KIDS,
     find_exclusive,
     mine_subset,
     parse_itemset,
     split_by_class,
 )
 
-# Only mutual_information is handled by this permutation test (task statement).
+# Only mutual_information is handled by default (task statement); other
+# feature-selection methods can be requested via --method.
 METHOD = "mutual_information"
 TOP_DIR = "top100"
 RELATIVE_DIR_NAME = "class_relative"
@@ -27,9 +30,6 @@ MASTER_SEED = 20260806
 N_SHUFFLES = 20
 
 PERMUTATION_RESULTS_NAME = "permutation_results.json"
-
-# Reference values from the real (unshuffled) run, for direct comparison.
-REAL_REF = {"yes_excl": 1865, "no_excl": 129871}
 
 SIZES = (1, 2, 3)
 
@@ -110,8 +110,16 @@ def main():
         "class-exclusive itemsets appear by chance alone."
     )
     parser.add_argument(
+        "--method", type=str, choices=METHODS, default=METHOD,
+        help="Feature selection method to test (default: mutual_information).",
+    )
+    parser.add_argument(
+        "--top-k", type=str, choices=TOP_KIDS, default=TOP_DIR,
+        help="Which discretized gene subset to test (top100/top150).",
+    )
+    parser.add_argument(
         "--fs-dir", type=str, default="data/final/feature_selection",
-        help="Dir containing mutual_information/top100_genes_discretized.csv.",
+        help="Dir containing {method}/{top-k}_genes_discretized.csv.",
     )
     parser.add_argument(
         "--base-dir", type=str, default="data/final/ARM/apriori_v2",
@@ -129,8 +137,10 @@ def main():
     args = parser.parse_args()
 
     project_root = Path(__file__).resolve().parents[3]
-    input_path = project_root / args.fs_dir / METHOD / f"{TOP_DIR}_genes_discretized.csv"
-    out_root = project_root / args.base_dir / METHOD / TOP_DIR / RELATIVE_DIR_NAME
+    method = args.method
+    top_k = args.top_k
+    input_path = project_root / args.fs_dir / method / f"{top_k}_genes_discretized.csv"
+    out_root = project_root / args.base_dir / method / top_k / RELATIVE_DIR_NAME
     out_root.mkdir(parents=True, exist_ok=True)
 
     print("=" * 60)
@@ -259,7 +269,7 @@ def main():
     print("  " + verdict)
 
     out = {
-        "method": METHOD,
+        "method": method,
         "input_file": str(input_path),
         "n_samples": n_total,
         "class_sizes": {CLASS_YES: n_yes, CLASS_NO: n_no},
@@ -275,7 +285,10 @@ def main():
             "yes_excl_by_size": real["yes_excl_by_size"],
             "no_excl_by_size": real["no_excl_by_size"],
         },
-        "real_reference": REAL_REF,
+        "real_reference": {
+            "yes_excl": real["yes_excl"],
+            "no_excl": real["no_excl"],
+        },
         "shuffles": shuffle_runs,
         "null_distribution": {
             "yes_excl": summarize(yes_excl_counts),
