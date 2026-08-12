@@ -86,9 +86,62 @@ imbalance ($\sim$1.67:1). Both properties directly motivate the preprocessing an
 class-relative mining decisions described in Sections~\ref{sec:preprocessing}
 and~\ref{sec:arm-results}.
 
+\subsubsection{Feature Types}
+The raw feature space is heterogeneous, combining platform control probes, gene
+expression probes, and clinical covariates. Table~\ref{tab:feature-types} breaks down
+the feature space by type and indicates which categories were retained for analysis.
+
+\begin{table}[h]
+\centering
+\small
+\caption{Breakdown of feature types in the raw and cleaned dataset.}
+\label{tab:feature-types}
+\begin{tabular}{p{2.6cm}p{1.6cm}p{3.0cm}}
+\toprule
+\textbf{Feature Type} & \textbf{Count} & \textbf{Retained?} \\
+\midrule
+AFFX control probes & 68 & No — removed \\
+Gene expression probes & 22{,}215 & Yes — MI-ranked, top-$k$ selected \\
+Clinical covariates & 2 & Yes — kept as-is \\
+Leakage-risk columns & 3 & No — removed \\
+Target label & 1 & Yes — one-hot encoded \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{AFFX control probes.} The HG-U133A array includes a set of AFFX-prefixed
+probes used for platform-level quality control (e.g., spike-in and housekeeping
+controls). These do not represent biologically variable gene expression relevant to
+relapse and were removed prior to any downstream analysis.
+
+\paragraph{Gene expression (genetic) features.} The bulk of the feature space —
+22{,}215 probes after control-probe removal — consists of continuous log-intensity
+expression values, each corresponding to a distinct gene or transcript. These are the
+primary features of interest and the sole target of the mutual-information ranking
+and gene-subset selection described in Section~\ref{sec:preprocessing}.
+
+\paragraph{Clinical covariates.} Two clinically annotated covariates,
+\texttt{lymph\_node\_status} and \texttt{ER\_Status} (estrogen receptor status), were
+retained alongside the expression features. Both are established prognostic factors
+in breast cancer and were kept to allow the ARM phase to surface rules combining
+molecular and clinical evidence, though the current study's ARM results
+(Section~\ref{sec:arm-results}) are reported over gene-expression-only itemsets, with
+clinical covariate integration noted as future work.
+
+\paragraph{Leakage-risk columns.} Three columns — \texttt{GEO\_accession\_number},
+\texttt{time\_to\_relapse}, and \texttt{Brain\_relapses} — were excluded because they
+either directly encode outcome-adjacent information (leaking the relapse label) or
+carry no generalizable biological signal (a sample identifier). Their removal is
+detailed in Section~\ref{sec:preprocessing}.
+
+\paragraph{Target label.} The \texttt{relapse} column is the binary outcome of
+interest. As discussed in Section~\ref{sec:preprocessing}, this was one-hot encoded
+into \texttt{relapse\_yes} / \texttt{relapse\_no} items rather than left as a bare
+binary column, a correction that was necessary for the minority class to be mineable
+under standard ARM itemization.
+
 \subsection{Data Preprocessing}
 \label{sec:preprocessing}
-
 Raw microarray intensity data is continuous, high-dimensional, and heavily
 platform-annotated — none of which is directly compatible with classical
 transaction-based Association Rule Mining. Converting this data into a valid ARM
@@ -102,6 +155,67 @@ directly: \texttt{GEO\_accession\_number}, \texttt{time\_to\_relapse}, and
 (\texttt{lymph\_node\_status}, \texttt{ER\_Status}) were retained alongside the
 \texttt{relapse} target. This yielded a cleaned matrix of $286 \times 22{,}215$
 expression features plus covariates and target.
+
+\subsubsection{Normalization}
+No additional normalization was applied beyond the platform-provided
+log-intensity values in the source series-matrix file; expression values
+were used as-is prior to discretization.
+
+\subsubsection{Missing values}
+A completeness check on the merged expression matrix confirmed no missing
+measurements across all 286 samples; no imputation was required.
+
+\subsubsection{Gene selection and dimensionality variants}
+Given $p = 22{,}215 \gg n = 286$ (a feature-to-sample ratio of roughly
+$78{:}1$), exhaustive ARM over the full expression space is computationally
+intractable and statistically unreliable. Gene selection was therefore
+performed as a supervised filter step prior to mining, using three
+class-aware ranking methods computed against the binary \texttt{relapse}
+label: mutual information (MI, primary method; scores range $0$--$0.119$,
+median $\approx 0.019$), chi-square ($\chi^2$ up to $12.55$, computed on the
+same discretized features as MI), and a two-sample $t$-test on the
+\emph{continuous} intensities ($|t|$ up to $4.89$), which avoids the
+information loss of discretization at the cost of comparing means only.
+[NEED YOUR CONFIRMATION: which top-$k$ subset sizes and which ranking
+method(s) does the Results section actually report on — top-100/500/1000
+by MI only, or the fuller $k \in \{100,150,\ldots,400\}$ sweep across all
+three methods? The two drafts disagree and this subsection needs to match
+Results exactly.]
+
+\subsubsection{Discretization of continuous expression values}
+Each of the 22{,}215 expression probes was converted independently into a
+binary item via a per-probe median split, using strict inequality:
+\begin{equation}
+x_{ij}' = \begin{cases} 1 & x_{ij} > \mathrm{median}(x_{\cdot j}) \\ 0 & \text{otherwise} \end{cases}
+\end{equation}
+so that values equal to the probe's median fall into the low bin. This
+produces an approximately, but not exactly, balanced split per gene (observed
+high-bin support in $[0.489, 0.500]$ across selected genes). The split is
+unsupervised with respect to \texttt{relapse} and, as noted in
+Section~\ref{sec:limitations}, discards magnitude information and can
+inflate spurious co-occurrences for genes whose values cluster near the
+median — a deliberate first-pass baseline rather than a final discretization
+method.
+
+\subsubsection{Conversion into transactions and items}
+Following discretization, each sample was represented as a transaction —
+a set of categorical items — following the template:
+\[
+\text{Sample}_i = \{\text{Gene}_1\_\text{HIGH},\ \text{Gene}_7\_\text{LOW},\
+\text{Gene}_{42}\_\text{HIGH},\ \ldots\}
+\]
+applied independently to each selected gene subset, producing transaction
+databases of corresponding width for the ARM experiments in
+Section~\ref{sec:arm-results}.
+
+\subsubsection{Label handling}
+The target label required particular care during itemization. An initial
+implementation encoded \texttt{relapse} as a single bare binary column,
+which under standard itemization structurally suppressed rule discovery on
+the minority (relapse) side. This was corrected by one-hot encoding the
+target into two explicit items, \texttt{relapse\_yes} and
+\texttt{relapse\_no}, each usable as a candidate consequent under the
+class-relative support thresholds described in Section~\ref{sec:arm-results}.
 
 \section{Methodology and Pipeline}
 
@@ -128,6 +242,7 @@ Median-split discretization was adopted as a simple, interpretable first approac
 Class Association Rule Mining (CARM) was performed on the top-100 gene subset using the FP-Growth algorithm as implemented in \texttt{mlxtend} \citep{raschka2018mlxtend}, which is a more efficient alternative to the original Apriori algorithm \citep{agrawal1994fast} for frequent itemset mining.
 
 \section{Results}
+\label{sec:arm-results}
 
 \subsection{Mutual Information Scores}
 
