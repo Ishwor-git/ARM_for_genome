@@ -1,0 +1,28 @@
+\begin{thebibliography}{4}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Agrawal and Srikant(1994)]{agrawal1994fast}
+Rakesh Agrawal and Ramakrishnan Srikant.
+\newblock Fast algorithms for mining association rules.
+\newblock In \emph{Proceedings of the 20th International Conference on Very Large Data Bases (VLDB)}, volume 1215, pages 487--499, 1994.
+
+\bibitem[Agrawal et~al.(1993)Agrawal, Imieli{\'n}ski, and Swami]{agrawal1993mining}
+Rakesh Agrawal, Tomasz Imieli{\'n}ski, and Arun Swami.
+\newblock Mining association rules between sets of items in large databases.
+\newblock In \emph{Proceedings of the 1993 ACM SIGMOD International Conference on Management of Data}, pages 207--216. ACM, 1993.
+
+\bibitem[Liu et~al.(1999)Liu, Hsu, and Ma]{liu1999mining}
+Bing Liu, Wynne Hsu, and Yiming Ma.
+\newblock Mining association rules with multiple minimum supports.
+\newblock In \emph{Proceedings of the Fifth ACM SIGKDD International Conference on Knowledge Discovery and Data Mining}, pages 337--341, 1999.
+
+\bibitem[Raschka(2018)]{raschka2018mlxtend}
+Sebastian Raschka.
+\newblock Mlxtend: Providing machine learning and data science utilities and extensions to python's scientific computing stack.
+\newblock \emph{The Journal of Open Source Software}, 3\penalty0 (24), 2018.
+
+\end{thebibliography}
