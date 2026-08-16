@@ -22,6 +22,15 @@ Run preprocessing first so the inputs below exist.
 | 3. CF-based class-rule evaluation | `src/ARM/fpgrowth/filter_class_rules_v2.py` | see below |
 | 4. Class-relative mining | `src/ARM/fpgrowth/run_class_relative_fpgrowth.py` | see below |
 | 5. Permutation null test | `src/ARM/fpgrowth/permutation_test_class_relative.py` | see below |
+| 6. Extract 2-item signal | `src/ARM/fpgrowth/extract_relapse_no_2itemsets.py` | see below |
+
+The full pipeline (Steps 1–6 for all 3 selection methods × `top100`/`top150`, plus a
+backfill of the missing `apriori_v2` top150 rule runs) can be run in one shot with:
+
+```bash
+./run_fpgrowth_experiment.sh            # uses `python`
+PY=python3 ./run_fpgrowth_experiment.sh # override interpreter
+```
 
 ---
 
@@ -158,10 +167,13 @@ compares class-exclusive itemsets.
 ```bash
 python src/ARM/fpgrowth/run_class_relative_fpgrowth.py \
   --method mutual_information chi_square t_test \
+  --top-k top100 \
   --base-dir data/final/ARM/fpgrowth_v2
 ```
 
-Outputs (under `<base-dir>/<method>/top100/class_relative/`):
+`--top-k` choices are `top100` (default) and `top150`.
+
+Outputs (under `<base-dir>/<method>/<top-k>/class_relative/`):
 
 | File | Content |
 |---|---|
@@ -181,6 +193,23 @@ procedure to quantify how many class-exclusive itemsets appear by chance.
 
 ```bash
 python src/ARM/fpgrowth/permutation_test_class_relative.py \
+  --method mutual_information \
+  --top-k top100 \
+  --base-dir data/final/ARM/fpgrowth_v2
+```
+
+---
+
+## Step 6 — `extract_relapse_no_2itemsets.py`
+
+Extracts and characterises the relapse-no-exclusive 2-item itemsets (the
+permutation-validated signal) from the class-relative output, recomputing exact
+per-class support by direct counting.
+
+```bash
+python src/ARM/fpgrowth/extract_relapse_no_2itemsets.py \
+  --method mutual_information \
+  --top-k top100 \
   --base-dir data/final/ARM/fpgrowth_v2
 ```
 
@@ -194,7 +223,11 @@ data/final/ARM/
 │   ├── chi_square/top100, top150
 │   ├── mutual_information/top100, top150
 │   └── t_test/top100, top150
-└── fpgrowth_v2/              # current runs: one-hot `relapse_yes`/`relapse_no`
+├── fpgrowth_v2/              # current runs: one-hot `relapse_yes`/`relapse_no`
+│   ├── chi_square/top100, top150
+│   ├── mutual_information/top100, top150
+│   └── t_test/top100, top150
+└── fpgrowth_v3/              # CF > 0 post-filter output
     ├── chi_square/top100
     ├── mutual_information/top100
     └── t_test/top100
@@ -202,7 +235,8 @@ data/final/ARM/
 
 Each run directory contains `frequent_itemsets.csv`,
 `association_rules.csv`, `run_metadata.json`; the top100 directories also
-contain filtered class-rule outputs after Steps 2–3.
+contain filtered class-rule outputs after Steps 2–3. Class-relative outputs
+land under `{method}/{top-k}/class_relative/`.
 
 ## Apriori vs FP-Growth
 
