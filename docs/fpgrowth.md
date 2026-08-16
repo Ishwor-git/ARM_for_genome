@@ -241,12 +241,18 @@ land under `{method}/{top-k}/class_relative/`.
 ## Apriori vs FP-Growth
 
 Both pipelines use the same inputs, target re-encoding, support/confidence
-thresholds, and downstream filtering. FP-Growth builds a compact FP-tree and
-mines frequent itemsets without candidate generation, which is typically
-faster than Apriori on dense binary data. Rule quality metrics (support,
-confidence, lift, CF) should match between algorithms when run with identical
+thresholds, and downstream filtering. Rule quality metrics (support,
+confidence, lift, CF) match between algorithms when run with identical
 parameters — any differences would indicate a numerical or implementation edge
 case, not a methodological change.
+
+**Measured on this dataset (min support 0.10, max length 3), FP-Growth is
+*slower* than Apriori**: ~2.5× at top100 and ~9× at top150 (e.g. mutual
+information top150: Apriori 12.2 s vs FP-Growth 106 s mining time). The
+median-split inputs are dense (≈50% of items present per transaction), which
+makes the FP-tree very large in `mlxtend`'s pure-Python implementation, while
+Apriori stays bounded by the small `max_len`. Itemset/rule output is
+identical. See `report.tex` §Apriori vs. FP-Growth for the full runtime table.
 
 See `docs/apriori.md` for the parallel Apriori pipeline and observed Apriori
 runtimes/rule counts.

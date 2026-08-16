@@ -251,11 +251,16 @@ binary matrices produced in Section~\ref{sec:preprocessing}. Every stage was
 applied independently to the three class-aware feature-selection rankings
 (mutual information, chi-square, $t$-test) and to both exported subset sizes,
 $k \in \{100, 150\}$, so that the effect of feature-count sensitivity can be
-separated from the composition of the selected gene set. All frequent-itemset
-mining uses the Apriori implementation in \texttt{mlxtend}
+separated from the composition of the selected gene set. Frequent-itemset
+mining is executed twice, once with the Apriori implementation and once with
+the FP-Growth implementation in \texttt{mlxtend}
 \citep{raschka2018mlxtend}, following the classical Apriori
-algorithm \citep{agrawal1994fast}~\citep{agrawal1993mining}; support,
-confidence, and lift are computed by the same library.
+\citep{agrawal1994fast}~\citep{agrawal1993mining} and FP-Growth
+\citep{han2000mining} algorithms; support, confidence, and lift are computed
+by the same library. Because both algorithms enumerate the \emph{exact} set of
+frequent itemsets, their outputs are identical by construction; the two runs
+are therefore reported once (Section~\ref{sec:res-scale}) and compared only on
+runtime in Section~\ref{sec:res-fpgrowth}.
 
 \subsection{Association rule mining over reduced feature sets}
 
@@ -358,9 +363,6 @@ counting, and the genes participating in many pairs are tallied.
 The following components are part of the designed pipeline but are not yet
 executed, and results will be added as they complete:
 \begin{itemize}
-    \item \textbf{FP-Growth evaluation}: re-running the mining stage with
-    \texttt{mlxtend}'s FP-Growth implementation to compare runtime and rule
-    output against Apriori.
     \item \textbf{Feature counts beyond 150}: only the $k \in \{100, 150\}$
     subsets are exported and mined so far; pushing $k$ toward 200--400 is in
     progress.
@@ -376,19 +378,21 @@ Results are reported primarily for the top-100 subsets; Section~\ref{sec:res-sen
 \subsection{Scale and feasibility of classical ARM}
 \label{sec:res-scale}
 
-Table~\ref{tab:apriori-scale} summarizes the raw Apriori output for the three
-selection methods at $k=100$ and $k=150$ (min support $0.10$, max length 3).
-At $k=100$ Apriori produces $1.3$--$1.5\times10^{5}$ frequent itemsets and
-$2.8$--$3.2\times10^{5}$ rules per method in $3$--$3.5$\,s; at $k=150$ the
-counts roughly triple and runtime rises to $\sim$13\,s. The practical
-bottleneck of classical ARM on this dataset is therefore rule \emph{volume},
-not execution time: filtering and evaluating $\sim\!10^5$--$10^6$ rules is
-where the analysis cost concentrates.
+Table~\ref{tab:apriori-scale} summarizes the raw ARM output --- identical for
+the Apriori and FP-Growth implementations --- for the three selection methods
+at $k=100$ and $k=150$ (min support $0.10$, max length 3). At $k=100$ the
+miner produces $1.3$--$1.5\times10^{5}$ frequent itemsets and
+$2.8$--$3.2\times10^{5}$ rules per method; at $k=150$ the counts roughly
+triple. The practical bottleneck of classical ARM on this dataset is therefore
+rule \emph{volume}, not execution time: filtering and evaluating
+$\sim\!10^5$--$10^6$ rules is where the analysis cost concentrates.
+Execution time is addressed separately in Section~\ref{sec:res-fpgrowth}.
 
 \begin{table}[h]
 \centering
 \small
-\caption{Apriori scale and runtime (min support $0.10$, max itemset length 3).}
+\caption{Frequent itemsets and rules at min support $0.10$, max itemset
+length 3. Counts are identical for Apriori and FP-Growth.}
 \label{tab:apriori-scale}
 \begin{tabular}{lccc}
 \toprule
@@ -402,6 +406,48 @@ $t$-test & 100 & 134{,}186 & 276{,}041 \\
 $t$-test & 150 & 453{,}256 & 913{,}114 \\
 \bottomrule
 \end{tabular}
+\end{table}
+
+\subsection{Apriori vs.\ FP-Growth}
+\label{sec:res-fpgrowth}
+
+Because both algorithms enumerate the exact set of frequent itemsets, the
+FP-Growth runs reproduced the Apriori results \emph{identically} --- not only
+the itemset and rule counts in Table~\ref{tab:apriori-scale} but also the
+class-relative exclusivity counts and the permutation $p$-values of
+Sections~\ref{sec:res-classrel}--\ref{sec:res-perm}. The two implementations
+are therefore interchangeable at the level of rule output, which serves as an
+internal consistency check on every downstream result. What differs is
+execution time (Table~\ref{tab:fpgrowth}): at $k=100$ FP-Growth is roughly
+$2.5\times$ slower than Apriori, and at $k=150$ the gap widens to
+$\sim$9$\times$. The median-split input is \emph{dense} --- about half of the
+$k$ items are present in every transaction --- so the FP-tree built by
+\texttt{mlxtend}'s pure-Python FP-Growth grows huge and becomes the bottleneck,
+while Apriori's candidate generation stays bounded by the small maximum
+itemset length. Rule \emph{generation} time (the post-mining step, identical
+for both) is negligible by comparison. On this dense, high-dimensional binary
+data the usual expectation that FP-Growth beats Apriori does not hold.
+
+\begin{table}[h]
+\centering
+\small
+\caption{Frequent-itemset mining runtime: Apriori vs.\ FP-Growth
+(min support $0.10$, max itemset length 3). Itemset and rule output are
+identical between the two algorithms.}
+\label{tab:fpgrowth}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lcccc}
+\toprule
+Selection method & $k$ & Apriori (s) & FP-Growth (s) & Slowdown \\
+\midrule
+Mutual information & 100 & 8.9 & 23.8 & $2.7\times$ \\
+Mutual information & 150 & 12.2 & 106.0 & $8.7\times$ \\
+Chi-square & 100 & 9.0 & 20.2 & $2.3\times$ \\
+Chi-square & 150 & 12.2 & 110.1 & $9.0\times$ \\
+$t$-test & 100 & 9.1 & 22.0 & $2.4\times$ \\
+$t$-test & 150 & 12.4 & 107.0 & $8.6\times$ \\
+\bottomrule
+\end{tabular}}
 \end{table}
 
 \subsection{Class-association rules and base-rate-adjusted quality}
@@ -659,9 +705,6 @@ The planned next steps follow directly from the results and the documented
 shortfalls:
 
 \begin{enumerate}
-    \item \textbf{FP-Growth evaluation}: re-run the mining stage with
-    \texttt{mlxtend}'s FP-Growth to compare itemset output and runtime against
-    the Apriori numbers in Table~\ref{tab:apriori-scale}.
     \item \textbf{Scaling beyond 150 features}: export and mine the
     $k \in \{200,\ldots,400\}$ subsets (subsets already produced by the
     feature-selection script) to find where validated-signal quality and
@@ -692,8 +735,12 @@ minority-class (relapse-yes) signal. Moving from 100 to 150 features roughly
 doubles the validated two-item signal for the chi-square and $t$-test rankings
 while degrading mutual information's majority-class significance, demonstrating
 that the value of additional features must be assessed by validated signal
-count, not raw rule volume. FP-Growth comparison, higher feature counts, and an
-ML baseline remain as advertised follow-on work.
+count, not raw rule volume. An independent FP-Growth implementation reproduced
+every result identically while being several times slower on this dense data
+(Section~\ref{sec:res-fpgrowth}), confirming the Apriori findings and showing
+that on dense high-dimensional binary inputs the expected FP-Growth speed
+advantage does not materialize. Higher feature counts, an ML baseline, and rule
+stability remain as advertised follow-on work.
 
 \bibliographystyle{plainnat}
 \bibliography{references}
