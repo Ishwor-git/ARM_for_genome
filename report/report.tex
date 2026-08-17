@@ -23,7 +23,7 @@
 \author{
     Ishwor Raj Pokharel\thanks{Email: ishwor.079bei013@tcioe.edu.np} 
     \and 
-    Suprim Koirala\thanks{Email: coauthor.email@example.com}
+    Suprim Koirala
 }
 \date{\today}
 
@@ -32,6 +32,32 @@
 \maketitle
 
 \begin{abstract}
+Classical association rule mining (ARM) was applied to a high-dimensional
+breast-cancer microarray dataset of 286 samples and 22{,}215 gene-expression
+probes ($p{:}n \approx 78{:}1$) to discover interpretable co-expression rules
+associated with disease relapse. Because exhaustive mining over the full
+feature space is computationally and statistically intractable, a supervised
+pipeline was executed: Affymetrix control probes and leakage-risk columns were
+removed; three class-aware ranking methods --- mutual information,
+chi-square, and a $t$-test --- selected top-100 and top-150 gene subsets
+continuous intensities were discretized by a per-gene median split; and
+frequent itemsets were mined with Apriori and FP-Growth (min support $0.10$,
+max itemset length 3). Classical ARM proved computationally tractable but
+rule-volume-bound, generating $0.28$--$1.04$ million rules per subset, and an
+independent FP-Growth implementation reproduced every result identically while
+running $2.4$--$9.0\times$ slower on the dense binary input. Base-rate-adjusted
+certainty factors showed that the apparent absence of minority-class
+(\texttt{relapse\_yes}) rules was largely a class-imbalance artifact: the
+minority-class signal is present but genuinely sparse rather than absent.
+Class-relative mining at matched absolute support, evaluated by a 20-run
+permutation null test, demonstrated that the statistically validated signal
+depends on the feature-selection method --- mutual information supports a
+majority-class (\texttt{relapse\_no}) signal, while chi-square and the
+$t$-test surface a significant minority-class signal. Raising the feature
+count from 100 to 150 tripled raw rule volume but only doubled the
+permutation-validated two-item signal for the chi-square and $t$-test
+rankings, and degraded mutual information's significance --- motivating the
+evaluation of scaling by validated-signal count rather than raw rule volume.
 \end{abstract}
 
 \section{Introduction}
@@ -173,9 +199,11 @@ measurements across all 286 samples; no imputation was required.
 Given $p = 22{,}215 \gg n = 286$ (a feature-to-sample ratio of roughly
 $78{:}1$), exhaustive ARM over the full expression space is computationally
 intractable and statistically unreliable. Gene selection was therefore
-performed as a supervised filter step prior to mining, using three
-class-aware ranking methods computed against the binary \texttt{relapse}
-label: mutual information (MI, primary method; scores range $0$--$0.119$,
+performed as a supervised filter step prior to mining
+\citep{guyon2003introduction}, using three
+class-aware ranking methods \citep{pedregosa2011scikit} computed against the
+binary \texttt{relapse} label: mutual information (MI, primary method; scores
+range $0$--$0.119$,
 median $\approx 0.019$), chi-square ($\chi^2$ up to $12.55$, computed on the
 same discretized features as MI), and a two-sample $t$-test on the
 \emph{continuous} intensities ($|t|$ up to $4.89$), which avoids the
@@ -286,8 +314,8 @@ Section~\ref{sec:res-scale}.
 
 A class-association rule (CAR) is defined as any rule whose consequent is a
 single item in $\{\texttt{relapse\_yes},\ \texttt{relapse\_no}\}$; rules with
-multi-item or non-class consequents are discarded. Three quality metrics are
-used to rank the retained CARs:
+multi-item or non-class consequents are discarded \citep{liu1998integrating}.
+Three quality metrics are used to rank the retained CARs:
 
 \begin{itemize}
     \item \textbf{Raw statistics}: support, confidence, and lift. A rule's
@@ -603,7 +631,8 @@ $t$-test & 150 & 2{,}105 & 148 \\
 \subsection{Feature-count sensitivity: $k = 100$ to $k = 150$}
 \label{sec:res-sensitivity}
 
-Table~\ref{tab:sens} contrasts the headline metrics at the two subset sizes.
+Tables~\ref{tab:sens-vol} and~\ref{tab:sens-sig} contrast the headline
+metrics at the two subset sizes.
 Total rule volume triples for every method, but \emph{quality} --- measured by
 permutation significance and validated two-item signal --- behaves
 differently:

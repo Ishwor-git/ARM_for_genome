@@ -1,4 +1,4 @@
-\begin{thebibliography}{4}
+\begin{thebibliography}{8}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
@@ -15,10 +15,30 @@ Rakesh Agrawal, Tomasz Imieli{\'n}ski, and Arun Swami.
 \newblock Mining association rules between sets of items in large databases.
 \newblock In \emph{Proceedings of the 1993 ACM SIGMOD International Conference on Management of Data}, pages 207--216. ACM, 1993.
 
+\bibitem[Guyon and Elisseeff(2003)]{guyon2003introduction}
+Isabelle Guyon and Andr{\'e} Elisseeff.
+\newblock An introduction to variable and feature selection.
+\newblock \emph{Journal of Machine Learning Research}, 3:\penalty0 1157--1182, 2003.
+
+\bibitem[Han et~al.(2000)Han, Pei, and Yin]{han2000mining}
+Jiawei Han, Jian Pei, and Yiwen Yin.
+\newblock Mining frequent patterns without candidate generation.
+\newblock In \emph{Proceedings of the 2000 ACM SIGMOD International Conference on Management of Data}, pages 1--12, 2000.
+
+\bibitem[Liu et~al.(1998)Liu, Hsu, and Ma]{liu1998integrating}
+Bing Liu, Wynne Hsu, and Yiming Ma.
+\newblock Integrating classification and association rule mining.
+\newblock In \emph{Proceedings of the Fourth International Conference on Knowledge Discovery and Data Mining (KDD)}, pages 80--86, 1998.
+
 \bibitem[Liu et~al.(1999)Liu, Hsu, and Ma]{liu1999mining}
 Bing Liu, Wynne Hsu, and Yiming Ma.
 \newblock Mining association rules with multiple minimum supports.
 \newblock In \emph{Proceedings of the Fifth ACM SIGKDD International Conference on Knowledge Discovery and Data Mining}, pages 337--341, 1999.
+
+\bibitem[Pedregosa et~al.(2011)Pedregosa, Varoquaux, Gramfort, Michel, Thirion, Grisel, Blondel, Prettenhofer, Weiss, Dubourg, et~al.]{pedregosa2011scikit}
+Fabian Pedregosa, Ga{\"e}l Varoquaux, Alexandre Gramfort, Vincent Michel, Bertrand Thirion, Olivier Grisel, Mathieu Blondel, Peter Prettenhofer, Ron Weiss, Vincent Dubourg, et~al.
+\newblock Scikit-learn: Machine learning in python.
+\newblock \emph{Journal of Machine Learning Research}, 12:\penalty0 2825--2830, 2011.
 
 \bibitem[Raschka(2018)]{raschka2018mlxtend}
 Sebastian Raschka.
