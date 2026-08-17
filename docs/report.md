@@ -1,7 +1,8 @@
 # Association Rule Mining on High-Dimensional Breast Cancer Microarray Data
 
-**Authors:** Ishwor Raj Pokharel, Suprim Koirala
-**Course:** Data Mining — 1-month project
+**Authors:** Ishwor Raj Pokharel, Suprim Koirala  
+**Course:** Data Mining  
+**Github:** [Ishwor-git/Arm_for_genome](https://github.com/Ishwor-git/ARM_for_genome)
 
 ---
 
